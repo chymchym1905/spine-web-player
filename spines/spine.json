@@ -1,0 +1,15 @@
+[
+  {
+    "skel": "j67j4v/Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel",
+    "atlas": "j67j4v/Eff_UI_SumeruBirthFloatToyLoading_Spine01.atlas",
+    "animation_index": 0,
+    "scale": 0.3,
+    "coordinate": [0, 0],
+    "color": "00000000",
+    "ui": true,
+    "hide": null,
+    "bg": null,
+    "dark": null,
+    "inject_js": null
+  }
+]
