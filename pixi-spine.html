@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spine Animation</title>
+    <script src="pixi.min.js"></script>
+    <script src="pixi-spine-4.1.umd.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+      }
+      canvas {
+        display: block;
+      }
+    </style>
+  </head>
+  <body>
+    <script>
+      const loadingIconPlayer = new PIXI.Application({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        antialias: true,
+        transparent: true,
+        backgroundAlpha: 0,
+        antialias: true,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+        forceCanvas: true,
+      });
+
+      document.body.appendChild(loadingIconPlayer.view);
+
+      loadingIconPlayer.loader
+        .add("spine", "./spines/Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel")
+        .load((loader, resources) => {
+          try {
+            const cartspine = new PIXI.spine.Spine(resources.spine.spineData);
+            console.log("Spine created: ", cartspine);
+            if (cartspine) {
+              cartspine.scale.set(
+                Math.min(
+                  window.innerWidth / cartspine.spineData.width,
+                  window.innerHeight / cartspine.spineData.height
+                ) * 0.8
+              );
+              cartspine.x = window.innerWidth / 2;
+              cartspine.y =
+                loadingIconPlayer.screen.height / 2 + cartspine.height / 2;
+              loadingIconPlayer.stage.addChild(cartspine);
+
+              cartspine.state.setAnimation(0, "In", true);
+              cartspine.state.addListener({
+                complete: () => {
+                  cartspine.state.setAnimation(0, "Loop", true);
+                },
+              });
+              window.addEventListener("resize", () => {
+                cartspine.scale.set(
+                  Math.min(
+                    window.innerWidth / cartspine.spineData.width,
+                    window.innerHeight / cartspine.spineData.height
+                  ) * 0.8
+                );
+                cartspine.x = window.innerWidth / 2;
+                cartspine.y =
+                  loadingIconPlayer.screen.height / 2 + cartspine.height / 2;
+              });
+            }
+          } catch (error) {
+            console.error("Spine creation error: ", error);
+          }
+        });
+    </script>
+  </body>
+</html>

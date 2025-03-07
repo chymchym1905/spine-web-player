@@ -26,8 +26,8 @@
 	}
 
 	canvas {
-		width: 512px;  /* or your preferred size */
-		height: 512px;
+		width: 1000px;  /* or your preferred size */
+		height: 1000px;
 		display: block;
 		background-color: transparent;
 	}
@@ -408,12 +408,12 @@
 
 				// Store the frame data
 				frames.push(flippedPixels.buffer);
-				delays.push(1000 / fps); // Delay in milliseconds
 
 				if (now - beginFrame < animationDuration) {
 					requestAnimationFrame(renderExport);
 				} else {
 					// Create APNG when all frames are captured
+					delays = Array(frames.length).fill(animationDuration * 1000 / frames.length);
 					const apng = UPNG.encode(frames, width, height, 0, delays);
 					
 					// Download the APNG
