@@ -8,6 +8,8 @@
     <title>Spine WebGL Test</title>
 	<!-- <script src="https://unpkg.com/@esotericsoftware/spine-canvas@4.0.17/dist/iife/spine-canvas.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-webgl@4.0.17/dist/iife/spine-webgl.js"></script>
+	<script src="upng.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.5/pako.js"></script>
     <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
 </head>
 <style>
@@ -16,20 +18,33 @@
 		padding: 0;
 	}
 
-	body,
-	html {
+	body {
+		background-color: rgb(76.5, 76.5, 76.5);
+	}
+	html {		
 		height: 100%
 	}
 
 	canvas {
-		position: absolute;
-		width: 100%;
-		height: 100%;
+		width: 512px;  /* or your preferred size */
+		height: 512px;
+		display: block;
+		background-color: transparent;
+	}
+	.block {
+		margin: 0;
+		padding: 0;
+		display: flex;
+		justify-content: center;
+		align-items: center;
+		min-height: 100vh;
 	}
 </style>
 
 <body>
-	<canvas id="canvas"></canvas>
+	<div class="block">
+		<canvas id="canvas"></canvas>
+	</div>
 	<center>
 		<div style="color: #fff; position: fixed; top: 0; width: 100%">
 			<span>Format:</span><select id="formatList"></select>
@@ -38,11 +53,14 @@
 			<span>Skin:</span><select id="skinList"></select>
 			<span>Vertex Effect:</span><select id="effectList"></select>
 			<span>Debug:</span><input type="checkbox" id="debug">
+            <span>Export:</span><button id="export">Export</button>
+            <span id="status"></span>
 		</div>
 	</center>
 	<script>
 
 		var canvas;
+		var ctx;
 		var gl;
 		var shader;
 		var batcher;
@@ -62,6 +80,12 @@
 		var jitterEffect = new spine.JitterEffect(20, 20);
 		var swirlTime = 0;
 
+        var exportButton = document.getElementById('export');
+        var statusElement = document.getElementById('status');
+        var fps = 60;
+
+        exportButton.addEventListener('click', exportAnimation);
+
 		function init() {
 			// Setup canvas and WebGL context. We pass alpha: false to canvas.getContext() so we don't use premultiplied alpha when
 			// loading textures. That is handled separately by PolygonBatcher.
@@ -69,6 +93,7 @@
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
 			var config = { alpha: false };
+
 			gl = canvas.getContext("webgl", config) || canvas.getContext("experimental-webgl", config);
 			if (!gl) {
 				alert('WebGL is unavailable.');
@@ -110,7 +135,7 @@
 				};
 				setupUI();
 				lastFrameTime = Date.now() / 1000;
-				requestAnimationFrame(render); // Loading is done, call render every frame.
+				// requestAnimationFrame(render); // Loading is done, call render every frame.
 			} else
 				requestAnimationFrame(load);
 		}
@@ -299,8 +324,118 @@
 				debugShader.unbind();
 			}
 
-			requestAnimationFrame(render);
+			// requestAnimationFrame(render);
 		}
+
+        function exportAnimation() {
+			var state = skeletons[activeSkeleton][format].state;
+			var skeleton = skeletons[activeSkeleton][format].skeleton;
+			var animationName = $("#animationList option:selected").text();
+			var animationDuration = state.data.skeletonData.animations.find(animation => animation.name === animationName).duration;
+			skeleton.setToSetupPose();
+			state.setAnimation(0, animationName, true);
+			beginFrame = Date.now() / 1000;
+			lastFrameTime = Date.now() / 1000;
+			var frames = [];
+			var delays = [];
+			requestAnimationFrame(renderExport);
+
+			function renderExport() {
+				var now = Date.now() / 1000;
+				var delta = now - lastFrameTime;
+				lastFrameTime = now;
+
+				// Update the MVP matrix to adjust for canvas size changes
+				resize();
+
+				gl.clearColor(0, 0, 0, 0);
+				gl.clear(gl.COLOR_BUFFER_BIT);
+
+				// Apply the animation state based on the delta time.
+				var skeleton = skeletons[activeSkeleton][format].skeleton;
+				var state = skeletons[activeSkeleton][format].state;
+				var bounds = skeletons[activeSkeleton][format].bounds;
+				var premultipliedAlpha = skeletons[activeSkeleton][format].premultipliedAlpha;
+				state.update(delta);
+				state.apply(skeleton);
+				skeleton.updateWorldTransform();
+				shader.bind();
+				shader.setUniformi(spine.Shader.SAMPLER, 0);
+				shader.setUniform4x4f(spine.Shader.MVP_MATRIX, mvp.values);
+
+				// Start the batch and tell the SkeletonRenderer to render the active skeleton.
+				batcher.begin(shader);
+
+				var effect = $("#effectList option:selected").text();
+				if (effect == "None") {
+					skeletonRenderer.vertexEffect = null;
+				} else if (effect == "Swirl") {
+					swirlTime += delta;
+					var percent = swirlTime % 2;
+					if (percent > 1) percent = 1 - (percent - 1);
+					swirlEffect.angle = pow2.apply(-60, 60, percent);
+					swirlEffect.centerX = bounds.offset.x + bounds.size.x / 2;
+					swirlEffect.centerY = bounds.offset.y + bounds.size.y / 2;
+					swirlEffect.radius = Math.sqrt(bounds.size.x * bounds.size.x + bounds.size.y * bounds.size.y) * 0.75;
+					skeletonRenderer.vertexEffect = swirlEffect;
+				} else if (effect == "Jitter")
+					skeletonRenderer.vertexEffect = jitterEffect;
+
+				skeletonRenderer.premultipliedAlpha = premultipliedAlpha;
+				skeletonRenderer.draw(batcher, skeleton);
+				batcher.end();
+
+				shader.unbind();
+
+				// Read pixels from WebGL context
+				let width = canvas.width;
+				let height = canvas.height;
+				let pixels = new Uint8Array(width * height * 4);
+				gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
+
+				// Flip the image vertically (WebGL reads pixels from bottom to top)
+				let flippedPixels = new Uint8Array(width * height * 4);
+				for (let i = 0; i < height; i++) {
+					for (let j = 0; j < width; j++) {
+						let sourceIndex = (i * width + j) * 4;
+						let targetIndex = ((height - i - 1) * width + j) * 4;
+						flippedPixels[targetIndex] = pixels[sourceIndex];         // R
+						flippedPixels[targetIndex + 1] = pixels[sourceIndex + 1]; // G
+						flippedPixels[targetIndex + 2] = pixels[sourceIndex + 2]; // B
+						flippedPixels[targetIndex + 3] = pixels[sourceIndex + 3]; // A
+					}
+				}
+
+				// Store the frame data
+				frames.push(flippedPixels.buffer);
+				delays.push(1000 / fps); // Delay in milliseconds
+
+				if (now - beginFrame < animationDuration) {
+					requestAnimationFrame(renderExport);
+				} else {
+					// Create APNG when all frames are captured
+					const apng = UPNG.encode(frames, width, height, 0, delays);
+					
+					// Download the APNG
+					const blob = new Blob([apng], { type: 'image/png' });
+					const url = URL.createObjectURL(blob);
+					const a = document.createElement('a');
+					a.href = url;
+					a.download = 'spine_animation.png';
+					document.body.appendChild(a);
+					a.click();
+					document.body.removeChild(a);
+					URL.revokeObjectURL(url);
+
+					// Reset state
+					frames = [];
+					delays = [];
+					statusElement.textContent = 'Export complete!';
+				}
+			}
+
+
+        }
 
 		function resize() {
 			var w = canvas.clientWidth;

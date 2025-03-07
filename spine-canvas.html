@@ -7,7 +7,7 @@
     <title>Spine Canvas Test</title>
 	<!-- <script src="https://unpkg.com/@esotericsoftware/spine-canvas@4.0.17/dist/iife/spine-canvas.js"></script> -->
 
-	<script src="spine-canvas-4.0.js"></script>
+	<script src="spine-canvas-4.0.17.js"></script>
 </head>
 
 <body style="margin: 0; padding: 0; background: #333">
@@ -31,16 +31,16 @@
 		// assetManager.loadText("spineboy-ess.json");
 		// assetManager.loadTextureAtlas("spineboy.atlas");
 		// await assetManager.loadAll();
-        assetManager = new spine.AssetManager();
-        assetManager.loadTextureAtlas("https://esotericsoftware.com/files/examples/4.0/spineboy/export/spineboy-pma.atlas");
-        assetManager.loadBinary("https://esotericsoftware.com/files/examples/4.0/spineboy/export/spineboy-pro.skel");
+        assetManager = new spine.AssetManager("./spines/");
+        assetManager.loadTextureAtlas("Eff_UI_SumeruBirthFloatToyLoading_Spine01.atlas");
+        assetManager.loadBinary("Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel");
         await assetManager.loadAll();
 
         // Create the texture atlas and skeleton data
-        let atlas = assetManager.require("https://esotericsoftware.com/files/examples/4.0/spineboy/export/spineboy-pma.atlas");
+        let atlas = assetManager.require("Eff_UI_SumeruBirthFloatToyLoading_Spine01.atlas");
         let atlasLoader = new spine.AtlasAttachmentLoader(atlas);
         let skeletonBinary = new spine.SkeletonBinary(atlasLoader);
-        let skeletonData = skeletonBinary.readSkeletonData(assetManager.require("https://esotericsoftware.com/files/examples/4.0/spineboy/export/spineboy-pro.skel"));
+        let skeletonData = skeletonBinary.readSkeletonData(assetManager.require("Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel"));
 
         // Create the skeleton instance
         skeleton = new spine.Skeleton(skeletonData);
@@ -52,14 +52,14 @@
         let animationStateData = new spine.AnimationStateData(skeleton.data);
         animationState = new spine.AnimationState(animationStateData);
         // Set the animation
-        animationState.setAnimation(0, "walk", true);
-        // animationState.addListener({
-        //     complete: (entry) => {
-        //         if (entry.animation.name === "In") {
-        //             animationState.setAnimation(0, "Loop", true);
-        //         }
-        //     }
-        // });
+        animationState.setAnimation(0, "In", true);
+        animationState.addListener({
+            complete: (entry) => {
+                if (entry.animation.name === "In") {
+                    animationState.setAnimation(0, "Loop", true);
+                }
+            }
+        });
 
         // Start rendering
         render()
