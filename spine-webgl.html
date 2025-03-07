@@ -92,7 +92,7 @@
 			canvas = document.getElementById("canvas");
 			canvas.width = window.innerWidth;
 			canvas.height = window.innerHeight;
-			var config = { alpha: false };
+			var config = { alpha: true };
 
 			gl = canvas.getContext("webgl", config) || canvas.getContext("experimental-webgl", config);
 			if (!gl) {
