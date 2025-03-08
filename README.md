@@ -10,3 +10,5 @@ It also allows you to export the animation as a APNG using UPNG.js.
 2. Open the `spine-webgl.html` file in your browser
 3. Play the animation
 4. Export the animation as a APNG
+
+Unfortunatly, the quality of spine in webgl is not very good

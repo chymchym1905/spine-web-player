@@ -9,7 +9,7 @@
 	<!-- <script src="https://unpkg.com/@esotericsoftware/spine-canvas@4.0.17/dist/iife/spine-canvas.js"></script> -->
     <script src="https://cdn.jsdelivr.net/npm/@esotericsoftware/spine-webgl@4.0.17/dist/iife/spine-webgl.js"></script>
 	<script src="upng.js"></script>
-	<script src="https://cdnjs.cloudflare.com/ajax/libs/pako/1.0.5/pako.js"></script>
+	<script src="pako.js"></script>
     <script src="https://code.jquery.com/jquery-3.1.0.min.js"></script>
 </head>
 <style>
@@ -135,7 +135,7 @@
 				};
 				setupUI();
 				lastFrameTime = Date.now() / 1000;
-				// requestAnimationFrame(render); // Loading is done, call render every frame.
+				requestAnimationFrame(render); // Loading is done, call render every frame.
 			} else
 				requestAnimationFrame(load);
 		}
@@ -324,7 +324,7 @@
 				debugShader.unbind();
 			}
 
-			// requestAnimationFrame(render);
+			requestAnimationFrame(render);
 		}
 
         function exportAnimation() {
@@ -414,6 +414,8 @@
 				} else {
 					// Create APNG when all frames are captured
 					delays = Array(frames.length).fill(animationDuration * 1000 / frames.length);
+					console.log(frames)
+					console.log(delays)
 					const apng = UPNG.encode(frames, width, height, 0, delays);
 					
 					// Download the APNG

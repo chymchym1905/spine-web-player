@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Spine Animation</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pixi.js/6.5.10/browser/pixi.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pixi-spine@4.0.4/dist/pixi-spine.umd.js"></script>
+    <style>
+      body {
+        margin: 0;
+        overflow: hidden;
+        background-color: rgb(76.5, 76.5, 76.5);
+        height: 100vh;
+        width: 100vw;
+      }
+      canvas {
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+    </style>
+  </head>a
+  <body id="container">
+    <canvas id="canvas"></canvas>
+      <div style="color: #fff; position: fixed; top: 0; width: 100%; display: flex; justify-content: center;">
+          <span id="status"></span>
+          &nbsp;
+          <span id="animation"></span>
+          &nbsp;
+          <span>Render: </span><button id="render">Render next frame</button>
+      </div>
+    <script>
+      var spineAnimation;
+      var lastFrameTime;
+      var canvas = document.getElementById("canvas");
+      
+      var gl = canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+        if (!gl) {
+            alert('WebGL is unavailable.');
+        }
+
+      var renderButton = document.getElementById('render');
+      renderButton.addEventListener('click', render);
+
+      const pixiapp = new PIXI.Application({
+        width: window.innerWidth,
+        height: window.innerHeight,
+        transparent: true,
+        backgroundAlpha: 0,
+        view: document.getElementById("canvas"),
+        resizeTo: document.getElementById("container")
+      });
+
+      document.body.appendChild(pixiapp.view);
+
+      pixiapp.loader
+        .add("spine", "./spines/Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel")
+        .load((loader, resources) => {
+          try {
+            document.getElementById("status").textContent = "Spine created, loading animation...";
+            spineAnimation = new PIXI.spine.Spine(resources.spine.spineData);
+            if (spineAnimation) {
+              spineAnimation.scale.set(
+                Math.min(
+                  window.innerWidth / spineAnimation.spineData.width,
+                  window.innerHeight / spineAnimation.spineData.height
+                ) * 0.8
+              );
+              spineAnimation.x = window.innerWidth / 2;
+              spineAnimation.y =
+                pixiapp.screen.height / 2 + spineAnimation.height / 2;
+              pixiapp.stage.addChild(spineAnimation);
+
+              spineAnimation.skeleton.setToSetupPose();
+              lastFrameTime = Date.now() / 1000;
+              spineAnimation.state.setAnimation(0, "In", true);
+
+              window.addEventListener("resize", () => {
+                spineAnimation.scale.set(
+                  Math.min(
+                    window.innerWidth / spineAnimation.spineData.width,
+                    window.innerHeight / spineAnimation.spineData.height
+                  ) * 0.8
+                );
+                spineAnimation.x = window.innerWidth / 2;
+                spineAnimation.y =
+                  pixiapp.screen.height / 2 + spineAnimation.height / 2;
+              });
+              document.getElementById("status").textContent = "Animation loaded";
+            }
+            
+            requestAnimationFrame(render);
+          } catch (error) {
+            console.error("Spine creation error: ", error);
+          }
+        });
+
+      function render() {
+        var state = spineAnimation.state;
+        var skeleton = spineAnimation.skeleton;
+        var animationDuration = spineAnimation.spineData.animations.find(animation => animation.name === "In").duration;
+        var now = Date.now() / 1000;
+        var delta = now - lastFrameTime;
+        lastFrameTime = now;
+        document.getElementById("animation").textContent = `now: ${now} delta: ${delta} anim: ${animationDuration}`;
+        state.update(delta);
+        state.apply(skeleton);
+        // requestAnimationFrame(render);
+      }
+    </script>
+  </body>
+</html>
