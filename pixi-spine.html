@@ -1,91 +1,127 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Spine Animation</title>
-    <script src="pixi.min.js"></script>
-    <script src="pixi-spine-4.0.umd.js"></script>
-    <script src="jszip.js"></script>
-    <script src="upng.js"></script>
-    <script src="pako.js"></script>
-    <style>
-      body {
-        margin: 0;
-        overflow: hidden;
-        background-color: rgb(76.5, 76.5, 76.5);
-        height: 100vh;
-        width: 100vw;
-      }
-      canvas {
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-    </style>
-  </head>
-  <body id="container">
-    <canvas id="canvas"></canvas>
-    <div
-      style="
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spine Animation</title>
+  <script src="pixi.min.js"></script>
+  <script src="pixi-spine-4.0.umd.js"></script>
+  <script src="jszip.js"></script>
+  <script src="upng.js"></script>
+  <script src="pako.js"></script>
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background-color: rgb(76.5, 76.5, 76.5);
+      height: 100vh;
+      width: 100vw;
+    }
+
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+  </style>
+</head>
+
+<body id="container">
+  <canvas id="canvas"></canvas>
+  <div style="
         color: #fff;
         position: fixed;
         top: 0;
         width: 100%;
         display: flex;
         justify-content: center;
-      "
-    >
-      <span>Export: </span><button id="export">Export</button>
-      &nbsp;
-      <span id="status"></span>
-      &nbsp;
-      <span id="animation"></span>
-      &nbsp;
-      <span>Render: </span><button id="render">Render next frame</button>
-    </div>
-    <script>
-      var spineAnimation = {};
-      var lastFrameTime;
-      var canvas = document.getElementById("canvas");
+        align-items: center;
+        gap: 10px;
+      ">
+    <span>Animation: </span>
+    <select id="animationSelect" aria-label="Select animation" style="height: 25px;"></select>
+    <span>Export: </span><button id="export">Export</button>
+    <span id="status"></span>
+    <span id="animation"></span>
+    <span>Render: </span><button id="render">Render next frame</button>
+  </div>
+  <script>
+    var spineAnimation = {};
+    var lastFrameTime;
+    var canvas = document.getElementById("canvas");
+    var animationList = [];
+    var targetAnimation = "";
+    var animationSelect = document.getElementById("animationSelect");
 
-      // var gl = canvas.getContext("webgl2");
-      var gl =
-        canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
-      if (!gl) {
-        alert("WebGL is unavailable.");
-      }
+    // var gl = canvas.getContext("webgl2");
+    var gl =
+      canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
+    if (!gl) {
+      alert("WebGL is unavailable.");
+    }
 
-      var exportButton = document.getElementById("export");
-      exportButton.addEventListener("click", exportAPNG);
+    var exportButton = document.getElementById("export");
+    exportButton.addEventListener("click", exportAPNG);
 
-      var renderButton = document.getElementById("render");
-      renderButton.addEventListener("click", render);
+    var renderButton = document.getElementById("render");
+    renderButton.addEventListener("click", render);
 
-      const loadingIconPlayer = new PIXI.Application({
-        width: window.innerWidth,
-        height: window.innerHeight,
-        context: gl,
-        backgroundAlpha: 0,
-        view: document.getElementById("canvas"),
-        resizeTo: document.getElementById("container"),
-      });
+    const loadingIconPlayer = new PIXI.Application({
+      width: window.innerWidth,
+      height: window.innerHeight,
+      context: gl,
+      backgroundAlpha: 0,
+      view: document.getElementById("canvas"),
+      resizeTo: document.getElementById("container"),
+    });
 
-      document.body.appendChild(loadingIconPlayer.view);
+    document.body.appendChild(loadingIconPlayer.view);
 
-      loadingIconPlayer.loader
-        .add("spine", "./spines/Eff_UI_SumeruBirthFloatToyLoading_Spine01.skel")
-        .load((loader, resources) => {
-          try {
-            document.getElementById("status").textContent =
-              "Spine created, loading animation...";
-            var sumeruCartSpine = new PIXI.spine.Spine(
-              resources.spine.spineData
+    var fileName = "nilou";
+
+    loadingIconPlayer.loader
+      .add("spine", "./spines/nilou/memorial.json")
+      .load((loader, resources) => {
+        try {
+          document.getElementById("status").textContent =
+            "Spine created, loading animation...";
+          var sumeruCartSpine = new PIXI.spine.Spine(
+            resources.spine.spineData
+          );
+          var skeleton = sumeruCartSpine.skeleton;
+          var animationState = sumeruCartSpine.state;
+          var animationStateData = sumeruCartSpine.stateData;
+          if (sumeruCartSpine) {
+            sumeruCartSpine.scale.set(
+              Math.min(
+                window.innerWidth / sumeruCartSpine.spineData.width,
+                window.innerHeight / sumeruCartSpine.spineData.height
+              ) * 0.8
             );
-            var skeleton = sumeruCartSpine.skeleton;
-            var animationState = sumeruCartSpine.state;
-            var animationStateData = sumeruCartSpine.stateData;
-            if (sumeruCartSpine) {
+            sumeruCartSpine.x = window.innerWidth / 2;
+            sumeruCartSpine.y =
+              loadingIconPlayer.screen.height / 2 +
+              sumeruCartSpine.height / 2;
+            loadingIconPlayer.stage.addChild(sumeruCartSpine);
+
+            // Set the target animation and populate select box
+            animationList = sumeruCartSpine.spineData.animations;
+            animationList.forEach(animation => {
+              const option = document.createElement("option");
+              option.value = animation.name;
+              option.textContent = animation.name;
+              animationSelect.appendChild(option);
+            });
+            targetAnimation = animationList[0].name;
+            animationSelect.value = targetAnimation;
+
+            lastFrameTime = Date.now() / 1000;
+            animationState.timeScale = 0.5;
+            animationState.setAnimation(0, targetAnimation, true);
+            animationState.addListener({});
+
+            window.addEventListener("resize", () => {
               sumeruCartSpine.scale.set(
                 Math.min(
                   window.innerWidth / sumeruCartSpine.spineData.width,
@@ -96,151 +132,140 @@
               sumeruCartSpine.y =
                 loadingIconPlayer.screen.height / 2 +
                 sumeruCartSpine.height / 2;
-              loadingIconPlayer.stage.addChild(sumeruCartSpine);
-
-              lastFrameTime = Date.now() / 1000;
-              animationState.timeScale = 0.5;
-              animationState.setAnimation(0, "In", true);
-              animationState.addListener({});
-
-              window.addEventListener("resize", () => {
-                sumeruCartSpine.scale.set(
-                  Math.min(
-                    window.innerWidth / sumeruCartSpine.spineData.width,
-                    window.innerHeight / sumeruCartSpine.spineData.height
-                  ) * 0.8
-                );
-                sumeruCartSpine.x = window.innerWidth / 2;
-                sumeruCartSpine.y =
-                  loadingIconPlayer.screen.height / 2 +
-                  sumeruCartSpine.height / 2;
-              });
-              document.getElementById("status").textContent =
-                "Animation loaded";
-              spineAnimation = {
-                skeleton: skeleton,
-                animationState: animationState,
-                animationStateData: animationStateData,
-                spineData: sumeruCartSpine.spineData,
-              };
-            }
-            requestAnimationFrame(render);
-          } catch (error) {
-            console.error("Spine creation error: ", error);
+            });
+            document.getElementById("status").textContent =
+              "Animation loaded";
+            spineAnimation = {
+              skeleton: skeleton,
+              animationState: animationState,
+              animationStateData: animationStateData,
+              spineData: sumeruCartSpine.spineData,
+            };
           }
-        });
+          requestAnimationFrame(render);
+        } catch (error) {
+          console.error("Spine creation error: ", error);
+        }
+      });
 
-      function render() {
-        var state = spineAnimation.animationState;
-        var skeleton = spineAnimation.skeleton;
-        var animationDuration =
-          spineAnimation.animationStateData.skeletonData.animations.find(
-            (animation) => animation.name === "In"
-          ).duration;
+    function render() {
+      var state = spineAnimation.animationState;
+      var skeleton = spineAnimation.skeleton;
+      var animationDuration =
+        spineAnimation.animationStateData.skeletonData.animations.find(
+          (animation) => animation.name === targetAnimation
+        ).duration;
+      var now = Date.now() / 1000;
+      var delta = now - lastFrameTime;
+      lastFrameTime = now;
+      document.getElementById(
+        "animation"
+      ).textContent = `now: ${now} delta: ${delta} anim: ${animationDuration}`;
+
+      state.update(delta);
+      state.apply(skeleton);
+      // skeleton.updateWorldTransform();
+      // spineAnimation.updateTransform();
+      requestAnimationFrame(render);
+    }
+
+    const zip = new JSZip();
+
+    async function exportAPNG() {
+      var state = spineAnimation.animationState;
+      var skeleton = spineAnimation.skeleton;
+      var animationDuration =
+        spineAnimation.animationStateData.skeletonData.animations.find(
+          (animation) => animation.name === targetAnimation
+        ).duration;
+
+      state.setAnimation(0, targetAnimation, false);
+      beginFrame = Date.now() / 1000;
+      lastFrameTime = Date.now() / 1000;
+      var frames = [];
+      var delays = [];
+      var count = 0;
+      requestAnimationFrame(renderExport);
+
+      function renderExport() {
         var now = Date.now() / 1000;
         var delta = now - lastFrameTime;
         lastFrameTime = now;
-        document.getElementById(
-          "animation"
-        ).textContent = `now: ${now} delta: ${delta} anim: ${animationDuration}`;
 
         state.update(delta);
         state.apply(skeleton);
-        // skeleton.updateWorldTransform();
-        // spineAnimation.updateTransform();
-        requestAnimationFrame(render);
-      }
 
-      const zip = new JSZip();
+        let fullWidth = canvas.width;
+        let fullHeight = canvas.height;
+        // Only take the bottom half
+        let width = fullWidth;
+        let height = fullWidth; // Start from the middle of the canvas
 
-      async function exportAPNG() {
-        var state = spineAnimation.animationState;
-        var skeleton = spineAnimation.skeleton;
-        var animationDuration =
-          spineAnimation.animationStateData.skeletonData.animations.find(
-            (animation) => animation.name === "In"
-          ).duration;
+        let pixels = new Uint8Array(width * height * 4);
+        // Read only the bottom half of the canvas
+        gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
 
-        state.setAnimation(0, "Loop", false);
-        beginFrame = Date.now() / 1000;
-        lastFrameTime = Date.now() / 1000;
-        var frames = [];
-        var delays = [];
-        var count = 0;
-        requestAnimationFrame(renderExport);
-
-        function renderExport() {
-          var now = Date.now() / 1000;
-          var delta = now - lastFrameTime;
-          lastFrameTime = now;
-
-          state.update(delta);
-          state.apply(skeleton);
-
-          let width = canvas.width;
-          let height = canvas.height;
-          let pixels = new Uint8Array(width * height * 4);
-          gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels);
-
-          // Flip the image vertically (WebGL reads pixels from bottom to top)
-          let flippedPixels = new Uint8Array(width * height * 4);
-          for (let i = 0; i < height; i++) {
-            for (let j = 0; j < width; j++) {
-              let sourceIndex = (i * width + j) * 4;
-              let targetIndex = ((height - i - 1) * width + j) * 4;
-              flippedPixels[targetIndex] = pixels[sourceIndex]; // R
-              flippedPixels[targetIndex + 1] = pixels[sourceIndex + 1]; // G
-              flippedPixels[targetIndex + 2] = pixels[sourceIndex + 2]; // B
-              flippedPixels[targetIndex + 3] = pixels[sourceIndex + 3]; // A
-            }
-          }
-
-          frames.push(flippedPixels.buffer);
-          if (now - beginFrame < animationDuration) {
-            requestAnimationFrame(renderExport);
-          }else{
-            delays = Array(frames.length).fill(animationDuration * 1000 / frames.length);
-            const apng = UPNG.encode(frames, width, height, 128, delays);
-            const blob = new Blob([apng], { type: 'image/png' });
-          } else {
-            delays = Array(frames.length).fill(
-              (animationDuration * 1000) / frames.length
-            );
-            const apng = UPNG.encode(frames, width, height, 56, delays);
-            const blob = new Blob([apng], { type: "image/png" });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.href = url;
-            a.download = 'spine_128_loop.png';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            // Reset state
-            
-            document.getElementById("status").textContent = "Exported";
-            exportZip(frames, width, height);
-            frames = [];
-            delays = [];
+        // Flip the image vertically (WebGL reads pixels from bottom to top)
+        let flippedPixels = new Uint8Array(width * height * 4);
+        for (let i = 0; i < height; i++) {
+          for (let j = 0; j < width; j++) {
+            let sourceIndex = (i * width + j) * 4;
+            let targetIndex = ((height - i - 1) * width + j) * 4;
+            flippedPixels[targetIndex] = pixels[sourceIndex]; // R
+            flippedPixels[targetIndex + 1] = pixels[sourceIndex + 1]; // G
+            flippedPixels[targetIndex + 2] = pixels[sourceIndex + 2]; // B
+            flippedPixels[targetIndex + 3] = pixels[sourceIndex + 3]; // A
           }
         }
 
-        async function exportZip(frames, width, height) {
-          for (let i = 0; i< frames.length; i++) {
-            let array = UPNG.encode([frames[i]], width, height, 0);
-            zip.file(`frame_${String(i).padStart(3, "0")}.png`, array);
-          }
-          const zipblob = await zip.generateAsync({ type: "blob" });
-          const zipUrl = URL.createObjectURL(zipblob);
+        frames.push(flippedPixels.buffer);
+        if (now - beginFrame < animationDuration) {
+          requestAnimationFrame(renderExport);
+        } else {
+          const bitDepth = 128;
+          delays = Array(frames.length).fill((animationDuration * 1000) / frames.length);
+          const apng = UPNG.encode(frames, width, height, 128, delays);
+          const blob = new Blob([apng], { type: "image/png" });
+          const url = URL.createObjectURL(blob);
           const a = document.createElement("a");
-          a.href = zipUrl;
-          a.download = "spine_animation.zip";
+          a.href = url;
+          a.download = fileName + "_" + bitDepth + "_" + targetAnimation + ".png";
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
-          URL.revokeObjectURL(zipUrl);
+          URL.revokeObjectURL(url);
+          // Reset state
+
+          document.getElementById("status").textContent = "Exported";
+          exportZip(frames, width, height);
+          frames = [];
+          delays = [];
         }
       }
-    </script>
-  </body>
+
+      async function exportZip(frames, width, height) {
+        for (let i = 0; i < frames.length; i++) {
+          let array = UPNG.encode([frames[i]], width, height, 0);
+          zip.file(`frame_${String(i).padStart(3, "0")}.png`, array);
+        }
+        const zipblob = await zip.generateAsync({ type: "blob" });
+        const zipUrl = URL.createObjectURL(zipblob);
+        const a = document.createElement("a");
+        a.href = zipUrl;
+        a.download = fileName + "_" + bitDepth + "_" + targetAnimation + ".zip";
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(zipUrl);
+      }
+    }
+
+    // Add event listener for animation changes
+    animationSelect.addEventListener("change", function(e) {
+      targetAnimation = e.target.value;
+      spineAnimation.animationState.setAnimation(0, targetAnimation, true);
+    });
+  </script>
+</body>
+
 </html>
