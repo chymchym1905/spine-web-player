@@ -161,7 +161,7 @@
             (animation) => animation.name === "In"
           ).duration;
 
-        state.setAnimation(0, "In", false);
+        state.setAnimation(0, "Loop", false);
         beginFrame = Date.now() / 1000;
         lastFrameTime = Date.now() / 1000;
         var frames = [];
@@ -198,6 +198,10 @@
           frames.push(flippedPixels.buffer);
           if (now - beginFrame < animationDuration) {
             requestAnimationFrame(renderExport);
+          }else{
+            delays = Array(frames.length).fill(animationDuration * 1000 / frames.length);
+            const apng = UPNG.encode(frames, width, height, 128, delays);
+            const blob = new Blob([apng], { type: 'image/png' });
           } else {
             delays = Array(frames.length).fill(
               (animationDuration * 1000) / frames.length
@@ -207,7 +211,7 @@
             const url = URL.createObjectURL(blob);
             const a = document.createElement("a");
             a.href = url;
-            a.download = "spine_animation.png";
+            a.download = 'spine_128_loop.png';
             document.body.appendChild(a);
             a.click();
             document.body.removeChild(a);
